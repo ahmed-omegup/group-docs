@@ -27,6 +27,7 @@ Fields:
 
 Notes:
 - `Group` represents the reusable identity, not its placement in a taxonomy.
+- `Group.name` should be self-contained and distinguishable on its own, even outside any parent context.
 - `_starts` / `_ends` express the lifecycle of the reusable group itself when needed.
 - Timing on `Group` is distinct from timing on `PartAvailability`, which describes when a taxonomy placement is valid.
 
@@ -106,6 +107,8 @@ Fields:
 
 Meaning:
 - `GroupPart` is taxonomy-local.
+- `GroupPart.name` is the local label inside its parent context and does not need to be globally self-contained.
+- Example: a part under `Grade 3` may be named `Science`, while the linked reusable `Group.name` should be something like `Grade 3 Science`.
 - `groupId` is optional because some nodes are structural only.
 - When `groupId` is set, the part points to the reusable `Group` represented at that node.
 
