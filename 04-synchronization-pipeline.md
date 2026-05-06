@@ -72,11 +72,13 @@ Contribution constraint (current — to be migrated to `sources`):
 - a taxonomy-derived row for `(groupId, jobId)` is only valid when the contributing `GroupPart._id` matches the one registered in `Group.sources[jobId].partId`
 
 > **TODO - NOW:** Migrate contribution constraint to use `sources`:
-> - look up `Group.sources[jobId]`
-> - if absent, allow the contribution but skip parent id tracking
-> - reject the contribution if `sources[jobId].source !== 'taxonomy'` (another source owns this slot)
-> - reject the contribution if `sources[jobId].partId !== groupPart._id`
+> - look up `Group.sources[jobId]`; if absent, skip the row silently
+> - skip silently if `sources[jobId].source !== 'taxonomy'` (another source owns this slot)
+> - skip silently if `sources[jobId].partId !== groupPart._id`
+> - if the group has `periodTypeId` set and it does not match the contributing space's `periodTypeId`, skip the row silently
 > - on acceptance, write parent ids into `Group.taxonomy_parentIds[jobId]`
+>
+> All skips are silent — no error is thrown, other rows in the same pipeline run are unaffected.
 
 `makeTeacherScheduleMembershipStream` writes schedule-derived rows into the same collection with:
 - `source = 'lessonSchedule'`
@@ -85,7 +87,9 @@ Contribution constraint (current — to be migrated to `sources`):
 - `starts = lessonSchedule.startDate`
 - `ends = lessonSchedule.endDate`
 
-> **TODO - NOW:** `lessonSchedule` source must also respect the `sources` lock when claiming a job slot on a group. If `sources[jobId]` is already set to a different source, the contribution must be rejected rather than silently overwriting.
+> **TODO - NOW:** `lessonSchedule` source must also apply strict contribution checks:
+> - skip silently if `sources[jobId]` is absent or `sources[jobId].source !== 'lessonSchedule'`
+> - if the group has `periodTypeId` set and it does not match the lesson schedule's period type, skip the row silently
 
 This is the key architectural point:
 - `groupMemberships` is the unified authorization/capture read model, not just a taxonomy materialization.

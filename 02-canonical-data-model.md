@@ -22,6 +22,7 @@ Fields:
 - `name`
 - `categoryId`
 - `flags: Flag[]`
+- `periodTypeId?` — when set, the group participates in group capture; contributing source pipelines must match this `periodTypeId` or silently skip insertion
 - `starts?` — lifecycle start of the reusable group. **[DONE]**
 - `ends?` — lifecycle end of the reusable group. **[DONE]**
 - `sources?: { [jobId: string]: { source: string } & SourceData[source] }` — per-job source ownership lock and source-specific payload. **[TODO - NOW]**
@@ -36,7 +37,7 @@ Notes:
   - the `source` field identifies which sync producer owns this `(groupId, jobId)` slot
   - once set to source A, no other source is permitted to register or write for that slot
   - the remaining fields carry source-specific payload (e.g. `partId: GroupPart._id` for `taxonomy` source)
-  - if `sources[jobId]` is absent, the slot is permissively unclaimed: membership can still be contributed, but no parent ids will be tracked for that job
+  - if `sources[jobId]` is absent, the slot is unclaimed and **no contribution is allowed** — the pipeline silently skips the row
 - `${source}_parentIds[jobId]` is written exclusively by the sync pipeline that owns that source; pipelines must not touch other sources' fields
 - `_parentIds[jobId]` is a computed view: `sources[jobId].source + '_parentIds'[jobId]`
 - `starts` / `ends` express the lifecycle of the reusable group itself.

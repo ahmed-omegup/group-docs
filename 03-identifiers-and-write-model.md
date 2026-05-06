@@ -78,14 +78,15 @@ The canonical model is pessimistic:
 
 Contribution to `groupMemberships` for a given `(groupId, jobId)` is governed by `Group.sources`.
 
-Canonical rules:
-- `Group.sources[jobId]` records which source owns that job slot and carries source-specific data
-- for `taxonomy` source: `partId` is the exact `GroupPart._id` of the only legitimate contributor for that `(groupId, jobId)` pair
-- if a taxonomy pipeline encounters a `GroupPart` whose `_id` does not match `sources[jobId].partId`, the contribution is invalid and must be rejected
-- if `sources[jobId]` is not set, the slot is permissively unclaimed: membership contribution is still allowed, but parent ids will not be tracked for that job
-- if `sources[jobId].source` is set to source A, source B is **prohibited** from claiming or writing to that slot
+Contribution is **strict**: a pipeline may only insert a row if all of the following hold:
+- `Group.sources[jobId]` is set
+- `sources[jobId].source` matches the contributing pipeline's source identifier
+- for `taxonomy` source: `sources[jobId].partId` matches the contributing `GroupPart._id`
+- if the group has `periodTypeId` set: the contributing source must produce rows for the same `periodTypeId`; if there is a mismatch, the pipeline **silently skips the row** — it does not throw an error or block other rows
 
-This source ownership lock prevents two independent sync pipelines from silently overwriting each other's group/job registrations.
+If any condition fails, the row is not inserted. There is no permissive fallback.
+
+This design ensures that misconfigured scopes do not propagate bad data and do not block healthy scopes in the same pipeline run.
 
 Parent synchronization:
 - each source writes its parent ids into its own `${source}_parentIds[jobId]` field on `Group`
