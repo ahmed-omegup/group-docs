@@ -27,6 +27,12 @@ At runtime, a group-based check resolves candidate `groupMemberships` for the ac
 
 Then the matching entity query is constrained by the resulting eligible `groupId` set.
 
+This is one of the reasons `GroupPart` must stay separate from `Group`:
+- permissions are evaluated on the reusable `Group`
+- membership contribution is produced through a job-specific `GroupPart`
+- for the same reusable group, `supervisor` and `attendee` memberships may lead to different permission sets
+- so a single reusable group id cannot be identified with a single taxonomy part id
+
 ### 7.4 Why Flags Matter
 `Group.flags` are not decorative metadata.
 

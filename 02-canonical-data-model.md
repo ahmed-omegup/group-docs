@@ -22,14 +22,31 @@ Fields:
 - `name`
 - `categoryId`
 - `flags: Flag[]`
-- `_starts?`
-- `_ends?`
+- `starts?` — lifecycle start of the reusable group. **[DONE]**
+- `ends?` — lifecycle end of the reusable group. **[DONE]**
+- `parentSources?: { [jobId: string]: { source: string; data: SourceData } }` — per-job source ownership lock and source-specific payload. **[TODO - NOW]**
+- `${source}_parentIds?: { [jobId: string]: string[] }` — per-source synced parent id sets, e.g. `taxonomy_parentIds`. Written only by the sync pipeline that owns that source. **[TODO - NOW]**
+- `_parentIds?: { [jobId: string]: string[] }` — computed view: routes each job to its owning source's `parentIds` bucket. **[TODO - NOW]**
+
+> **Removed fields (migration required — NOW):**
+> - `groupParts` is removed. Its role (contribution gate + per-job part reference) is absorbed into `parentSources[jobId].data` (e.g. `{ groupPartId }` for the `taxonomy` source).
+> - `parentIds` is removed. It is replaced by per-source `${source}_parentIds` fields and the computed `_parentIds` view.
+> - `_starts` / `_ends` are replaced by `starts` / `ends`. **[DONE]**
 
 Notes:
 - `Group` represents the reusable identity, not its placement in a taxonomy.
 - `Group.name` should be self-contained and distinguishable on its own, even outside any parent context.
-- `_starts` / `_ends` express the lifecycle of the reusable group itself when needed.
+- One `Group` may aggregate memberships for multiple jobs.
+- `parentSources[jobId]` acts as both a contribution gate and a source ownership lock:
+  - the `source` field identifies which sync producer owns this `(groupId, jobId)` slot
+  - once set to source A, no other source is permitted to register or write for that slot
+  - the `data` field carries source-specific payload (e.g. `{ groupPartId: string }` for `taxonomy` source)
+- `${source}_parentIds[jobId]` is written exclusively by the sync pipeline that owns that source; pipelines must not touch other sources' fields
+- `_parentIds[jobId]` is a computed view: `parentSources[jobId].source + '_parentIds'[jobId]`
+- `starts` / `ends` express the lifecycle of the reusable group itself.
 - Timing on `Group` is distinct from timing on `PartAvailability`, which describes when a taxonomy placement is valid.
+
+> **Deferred (LATER):** A shared `Range` abstraction for `starts`/`ends` across `Group` and `PartAvailability` has been considered and deferred. Current decision: keep direct fields on each entity until the abstraction earns its weight.
 
 #### JobInGroup
 Member role relative to the group.
@@ -101,6 +118,7 @@ Fields:
 - `name`
 - `taxonomyId`
 - `parentPartId?`
+- `jobId`
 - `groupId?`
 - `ord`
 - `_path?`
@@ -109,6 +127,10 @@ Meaning:
 - `GroupPart` is taxonomy-local.
 - `GroupPart.name` is the local label inside its parent context and does not need to be globally self-contained.
 - Example: a part under `Grade 3` may be named `Science`, while the linked reusable `Group.name` should be something like `Grade 3 Science`.
+- `GroupPart` is intentionally not the same entity as `Group`, and it must not reuse the same identifier.
+- A `GroupPart` carries a single `jobId`, while a reusable `Group` may aggregate several jobs.
+- This separation is required because permissions are job-sensitive: for the same reusable group, a `supervisor` membership may have write permission while an `attendee` membership only has read permission.
+- Because memberships for different jobs are contributed and interpreted differently, the system cannot identify the reusable group with any one job-specific taxonomy part.
 - `groupId` is optional because some nodes are structural only.
 - When `groupId` is set, the part points to the reusable `Group` represented at that node.
 
@@ -129,7 +151,9 @@ Meaning:
 
 Current decision:
 - `PartAvailability` keeps direct `starts` / `ends` fields.
-- A shared `Range` abstraction is deferred.
+- `Group` also uses direct `starts` / `ends` fields. **[DONE]**
+
+> **Deferred (LATER):** A shared `Range` abstraction covering both `PartAvailability` and `Group` timing has been considered and deferred. The refactor does not currently buy enough clarity to justify migration cost. Keep direct fields on each entity until the abstraction earns its weight.
 
 ### 3.4 Authoritative Membership Layer
 
@@ -214,6 +238,10 @@ Fields:
 - `spaceCaptureTaxonomyId`
 - `groupId`
 - `groupPartId`
+- `jobs: string[]` — all job roles the member held in this group at capture time, across all sources. **[TODO - NOW]**
+
+> **Migration note (NOW):** The current `jobId: string` field must be replaced with `jobs: string[]`.
+> Rationale: the same member can simultaneously hold multiple job roles in the same group (e.g. `attendee` from taxonomy and `supervisor` from lessonSchedule). A single `jobId` silently drops extra roles. Capture should preserve all of them so downstream report consumers can reason about the full role context.
 
 Meaning:
 - This layer resolves a member's taxonomy-derived placement at the exact capture date.

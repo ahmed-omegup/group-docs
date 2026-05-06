@@ -27,7 +27,7 @@ So `PeriodType` may become more technical in implementation, but the partition i
 
 ### 10.3 Group Timing Vs Placement Timing
 Current decision:
-- reusable `Group` may have `_starts` / `_ends`
+- reusable `Group` has `starts` / `ends` (direct fields, **[DONE]** — previously `_starts` / `_ends`)
 - taxonomy placement timing stays on `PartAvailability.starts` / `ends`
 
 This keeps two concerns separate:
@@ -37,10 +37,10 @@ This keeps two concerns separate:
 ### 10.4 Deferred Shared Range Abstraction
 A shared `Range` abstraction was considered for group lifetime and part availability.
 
-Current decision:
-- do not introduce it now
+Current decision (deferred — **LATER**):
+- do not introduce it yet
 - keep direct `starts` / `ends` on `PartAvailability`
-- keep `_starts` / `_ends` on `Group`
+- keep direct `starts` / `ends` on `Group`
 
 Reason:
 - the refactor does not currently buy enough clarity to justify the migration cost
