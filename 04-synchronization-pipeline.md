@@ -68,15 +68,15 @@ The result is one resolved interval per effective taxonomy-derived concrete grou
 - `taxonomyPeriod = {taxonomyId}_{period}`
 - `memberTaxonomyId = {memberId}_{taxonomyId}_{period}`
 
-Contribution constraint (current — uses `groupParts`, to be migrated):
-- a taxonomy-derived row for `(groupId, jobId)` is only valid when the contributing `GroupPart` is the one registered in `Group.groupParts[jobId]`
+Contribution constraint (current — to be migrated to `sources`):
+- a taxonomy-derived row for `(groupId, jobId)` is only valid when the contributing `GroupPart._id` matches the one registered in `Group.sources[jobId].partId`
 
-> **TODO - NOW:** Migrate contribution constraint to use `parentSources`:
-> - look up `Group.parentSources[jobId]`
-> - reject the contribution if `parentSources[jobId]` is absent
-> - reject the contribution if `parentSources[jobId].source !== 'taxonomy'` (another source owns this slot)
-> - reject the contribution if `parentSources[jobId].data.groupPartId !== groupPart._id`
-> - on acceptance, write parent ids into `Group.taxonomy_parentIds[jobId]` (not the old `parentIds`)
+> **TODO - NOW:** Migrate contribution constraint to use `sources`:
+> - look up `Group.sources[jobId]`
+> - if absent, allow the contribution but skip parent id tracking
+> - reject the contribution if `sources[jobId].source !== 'taxonomy'` (another source owns this slot)
+> - reject the contribution if `sources[jobId].partId !== groupPart._id`
+> - on acceptance, write parent ids into `Group.taxonomy_parentIds[jobId]`
 
 `makeTeacherScheduleMembershipStream` writes schedule-derived rows into the same collection with:
 - `source = 'lessonSchedule'`
@@ -85,7 +85,7 @@ Contribution constraint (current — uses `groupParts`, to be migrated):
 - `starts = lessonSchedule.startDate`
 - `ends = lessonSchedule.endDate`
 
-> **TODO - NOW:** `lessonSchedule` source must also respect the `parentSources` lock when claiming a job slot on a group. If `parentSources[jobId]` is already set to a different source, the contribution must be rejected rather than silently overwriting.
+> **TODO - NOW:** `lessonSchedule` source must also respect the `sources` lock when claiming a job slot on a group. If `sources[jobId]` is already set to a different source, the contribution must be rejected rather than silently overwriting.
 
 This is the key architectural point:
 - `groupMemberships` is the unified authorization/capture read model, not just a taxonomy materialization.

@@ -74,21 +74,21 @@ The canonical model is pessimistic:
 
 ### 5.5 Group / Job Contribution Constraints
 
-> **Migration required — NOW:** This section describes the target design replacing the old `groupParts` / `parentIds` fields.
+> **TODO - NOW:** Implement `Group.sources` and per-source `_parentIds` fields.
 
-Contribution to `groupMemberships` for a given `(groupId, jobId)` is governed by `Group.parentSources`.
+Contribution to `groupMemberships` for a given `(groupId, jobId)` is governed by `Group.sources`.
 
 Canonical rules:
-- `Group.parentSources[jobId]` records which source owns that job slot and carries source-specific data
-- for `taxonomy` source: `data.groupPartId` is the exact `GroupPart` that is the only legitimate contributor for that `(groupId, jobId)` pair
-- if a taxonomy pipeline encounters a `GroupPart` that does not match `parentSources[jobId].data.groupPartId`, the contribution is invalid and must be rejected
-- if `parentSources[jobId]` is not set at all, that job slot is unclaimed and contribution is invalid regardless of source
-- if `parentSources[jobId].source` is set to source A, source B is **prohibited** from claiming or writing to that slot
+- `Group.sources[jobId]` records which source owns that job slot and carries source-specific data
+- for `taxonomy` source: `partId` is the exact `GroupPart._id` of the only legitimate contributor for that `(groupId, jobId)` pair
+- if a taxonomy pipeline encounters a `GroupPart` whose `_id` does not match `sources[jobId].partId`, the contribution is invalid and must be rejected
+- if `sources[jobId]` is not set, the slot is permissively unclaimed: membership contribution is still allowed, but parent ids will not be tracked for that job
+- if `sources[jobId].source` is set to source A, source B is **prohibited** from claiming or writing to that slot
 
 This source ownership lock prevents two independent sync pipelines from silently overwriting each other's group/job registrations.
 
 Parent synchronization:
 - each source writes its parent ids into its own `${source}_parentIds[jobId]` field on `Group`
 - sources must not write into another source's `_parentIds` field
-- `Group._parentIds[jobId]` is a computed view routing each job to `${parentSources[jobId].source}_parentIds[jobId]`
+- `Group._parentIds[jobId]` is a computed view routing each job to `${sources[jobId].source}_parentIds[jobId]`
 - parent relations at the reusable-group layer remain job-specific and source-scoped

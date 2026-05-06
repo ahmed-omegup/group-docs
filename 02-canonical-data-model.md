@@ -24,25 +24,21 @@ Fields:
 - `flags: Flag[]`
 - `starts?` — lifecycle start of the reusable group. **[DONE]**
 - `ends?` — lifecycle end of the reusable group. **[DONE]**
-- `parentSources?: { [jobId: string]: { source: string; data: SourceData } }` — per-job source ownership lock and source-specific payload. **[TODO - NOW]**
+- `sources?: { [jobId: string]: { source: string } & SourceData[source] }` — per-job source ownership lock and source-specific payload. **[TODO - NOW]**
 - `${source}_parentIds?: { [jobId: string]: string[] }` — per-source synced parent id sets, e.g. `taxonomy_parentIds`. Written only by the sync pipeline that owns that source. **[TODO - NOW]**
 - `_parentIds?: { [jobId: string]: string[] }` — computed view: routes each job to its owning source's `parentIds` bucket. **[TODO - NOW]**
-
-> **Removed fields (migration required — NOW):**
-> - `groupParts` is removed. Its role (contribution gate + per-job part reference) is absorbed into `parentSources[jobId].data` (e.g. `{ groupPartId }` for the `taxonomy` source).
-> - `parentIds` is removed. It is replaced by per-source `${source}_parentIds` fields and the computed `_parentIds` view.
-> - `_starts` / `_ends` are replaced by `starts` / `ends`. **[DONE]**
 
 Notes:
 - `Group` represents the reusable identity, not its placement in a taxonomy.
 - `Group.name` should be self-contained and distinguishable on its own, even outside any parent context.
 - One `Group` may aggregate memberships for multiple jobs.
-- `parentSources[jobId]` acts as both a contribution gate and a source ownership lock:
+- `sources[jobId]` acts as both a contribution gate and a source ownership lock:
   - the `source` field identifies which sync producer owns this `(groupId, jobId)` slot
   - once set to source A, no other source is permitted to register or write for that slot
-  - the `data` field carries source-specific payload (e.g. `{ groupPartId: string }` for `taxonomy` source)
+  - the remaining fields carry source-specific payload (e.g. `partId: GroupPart._id` for `taxonomy` source)
+  - if `sources[jobId]` is absent, the slot is permissively unclaimed: membership can still be contributed, but no parent ids will be tracked for that job
 - `${source}_parentIds[jobId]` is written exclusively by the sync pipeline that owns that source; pipelines must not touch other sources' fields
-- `_parentIds[jobId]` is a computed view: `parentSources[jobId].source + '_parentIds'[jobId]`
+- `_parentIds[jobId]` is a computed view: `sources[jobId].source + '_parentIds'[jobId]`
 - `starts` / `ends` express the lifecycle of the reusable group itself.
 - Timing on `Group` is distinct from timing on `PartAvailability`, which describes when a taxonomy placement is valid.
 
@@ -117,18 +113,18 @@ Fields:
 - `subid`
 - `name`
 - `taxonomyId`
-- `parentPartId?`
-- `jobId`
+- `parentId?`
 - `groupId?`
 - `ord`
 - `_path?`
+- `_jobId?` — computed from the owning `Space.jobId`; prefixed `_` because it is derived and may lag until sync completes
 
 Meaning:
 - `GroupPart` is taxonomy-local.
 - `GroupPart.name` is the local label inside its parent context and does not need to be globally self-contained.
 - Example: a part under `Grade 3` may be named `Science`, while the linked reusable `Group.name` should be something like `Grade 3 Science`.
 - `GroupPart` is intentionally not the same entity as `Group`, and it must not reuse the same identifier.
-- A `GroupPart` carries a single `jobId`, while a reusable `Group` may aggregate several jobs.
+- The job context of a `GroupPart` is inherited from `Space.jobId`, not stored directly; `_jobId` is a denormalized convenience field that sync populates asynchronously.
 - This separation is required because permissions are job-sensitive: for the same reusable group, a `supervisor` membership may have write permission while an `attendee` membership only has read permission.
 - Because memberships for different jobs are contributed and interpreted differently, the system cannot identify the reusable group with any one job-specific taxonomy part.
 - `groupId` is optional because some nodes are structural only.
