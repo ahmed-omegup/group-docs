@@ -23,6 +23,7 @@ Fields:
 - `categoryId`
 - `flags: Flag[]`
 - `periodTypeId?` — when set, the group participates in group capture; contributing source pipelines must match this `periodTypeId` or silently skip insertion
+- `_captureTypes?: { [jobId: string]: captureTypeId[] }` — computed; for each job, the list of `CaptureType` ids whose snapshots this group participates in. Population logic deferred (**LATER**). **[TODO - LATER]**
 - `starts?` — lifecycle start of the reusable group. **[DONE]**
 - `ends?` — lifecycle end of the reusable group. **[DONE]**
 - `sources?: { [jobId: string]: { source: string } & SourceData[source] }` — per-job source ownership lock and source-specific payload. **[TODO - NOW]**
@@ -196,6 +197,7 @@ Fields:
 - `taxonomyPeriod?`
 - `memberTaxonomyId?`
 - `_flags?`
+- `_captures?` — computed by ID construction: for each `captureTypeId` in `group._captureTypes[jobId]`, append `{captureTypeId}_{period}`. No join is required; some constructed ids may reference non-existent `Capture` documents, which simply produce no downstream row. **[TODO - NOW]**
 
 Meaning:
 - This collection materializes effective group membership intervals regardless of producer.
@@ -208,15 +210,60 @@ Source variants:
 
 ### 3.6 Capture Layer
 
+#### CaptureType
+Defines a conceptual instant relative to any period of a given period type.
+
+Fields:
+- `_id = {periodTypeId}_{subid}`
+- `periodTypeId`
+- `subid`
+- `name`
+
+Meaning:
+- `CaptureType` is reusable across all groups and spaces that share the same `periodTypeId`.
+- Example: `schoolYear_end` defines "end of school year" for the `schoolYear` period type.
+- It does not carry a date itself; the date is resolved via `Capture`.
+
+#### Capture
+Concrete instantiation of a `CaptureType` for a specific period.
+
+Fields:
+- `_id = {captureTypeId}_{period}`
+- `captureTypeId`
+- `period`
+- `date`
+
+Meaning:
+- `Capture` is the actual time point for a given capture type in a given period.
+- Example: `schoolYear_end_2026` → `date = 2026-07-15`.
+- Creating a `Capture` document triggers the downstream resolution pipelines for both group capture and taxonomy capture paths.
+
+#### CaptureSpaceType
+Bridges the taxonomy capture path to the unified `CaptureType` infrastructure.
+
+Fields:
+- `_id`
+- `captureTypeId`
+- `spaceId`
+- `subid`
+- `taxonomyIds`
+
+Meaning:
+- When a `Capture` is created for `(captureTypeId, period)`, a sync pipeline derives a `SpaceCapture` for each `CaptureSpaceType` referencing that `captureTypeId`.
+- This replaces manually created `SpaceCapture` documents with a declarative subscription model.
+- The derived `SpaceCapture._id = {spaceId}_{subid}_{period}`, `date` from the `Capture`.
+
 #### SpaceCapture
 Capture event scoped to a space and period.
 
 Fields:
-- `_id`
+- `_id = {spaceId}_{subid}_{period}`
 - `spaceId`
 - `subid`
 - `period`
 - `date`
+
+Note: `SpaceCapture` may be created directly or derived from a `CaptureSpaceType` + `Capture` pair.
 
 #### SpaceCaptureTaxonomy
 One capture row per taxonomy relevant to a `SpaceCapture`.
@@ -235,11 +282,24 @@ Fields:
 - `spaceCaptureTaxonomyId`
 - `groupId`
 - `groupPartId`
-- `jobs: string[]` — all job roles the member held in this group at capture time, across all sources. **[TODO - NOW]**
-
-> **Migration note (NOW):** The current `jobId: string` field must be replaced with `jobs: string[]`.
-> Rationale: the same member can simultaneously hold multiple job roles in the same group (e.g. `attendee` from taxonomy and `supervisor` from lessonSchedule). A single `jobId` silently drops extra roles. Capture should preserve all of them so downstream report consumers can reason about the full role context.
+- `jobId` — from the contributing taxonomy's `Space.jobId`; singular because each taxonomy has exactly one job context
 
 Meaning:
-- This layer resolves a member's taxonomy-derived placement at the exact capture date.
+- This layer resolves a member's taxonomy-derived placement at the exact capture date, preserving hierarchy context (`groupPartId`).
 - Downstream evaluation/report pipelines consume it instead of replaying history ad hoc.
+
+#### CaptureGroupMembership
+Unified group membership snapshot for a specific capture, across all sources. **[TODO - NOW]**
+
+Fields:
+- `_id = {memberId}_{captureId}_{groupId}`
+- `memberId`
+- `captureId`
+- `groupId`
+- `jobs: string[]` — all job roles the member held in this group at capture time, aggregated across all matching `groupMembership` rows (one per source/job combination)
+- `sources: string[]` — the contributing sources for the above jobs
+
+Meaning:
+- Produced by scanning `groupMemberships` where `_captures ∋ captureId`, then filtering by `starts <= capture.date < ends`.
+- One row per `(memberId, captureId, groupId)` — jobs from different sources (e.g. `attendee` from taxonomy, `supervisor` from lessonSchedule) are aggregated into the same row.
+- Unified across all sources (`taxonomy`, `lessonSchedule`, future sources).
