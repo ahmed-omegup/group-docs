@@ -54,12 +54,23 @@ In other words:
 - query/index strategies should optimize how that state is searched
 - those two concerns are related, but not the same thing
 
-### 10.6 Current Overlap Limitation
+### 10.6 Dynamic Jobs For Event-Like Sources
+Current lessonSchedule membership uses two hardcoded jobs: `supervisor` and `attendee`.
+
+Target direction:
+- jobs in an event-like source should be dynamic, defined per event type rather than hardcoded
+- there should be a way to auto-sync event-related information into entities involved with specific jobs in that event
+- this generalizes the current pattern of syncing a teacher's lesson schedule presence into a group membership
+- lessonSchedule is the first concrete instance of this pattern; the architecture should eventually generalize it
+
+This is a target refactor, not the current implementation.
+
+### 10.7 Current Overlap Limitation
 Today, timed authorization and related lookups rely on overlap predicates on `starts` / `ends`.
 
 Those predicates are hard to index optimally at scale because overlap is not a simple equality lookup.
 
-### 10.7 Bucketized Overlap Direction
+### 10.8 Bucketized Overlap Direction
 A promising general optimization direction is bucketized overlap decomposition.
 
 For query interval `[s1, e1)` and stored interval `[s, e)`:
@@ -75,3 +86,14 @@ With supporting indexes such as:
 - one index led by `(midpointBuckets, ends)`
 
 This is documented as a backend implementation note, not as a required domain-level abstraction.
+
+### 10.9 Back-Sync Education-Logic Removal Plan
+Currently, back-sync contains hardcoded knowledge of the education space (school year period type, grade/class group derivation, education-specific seeder streams).
+
+Target state:
+- back-sync contains no education-specific logic
+- education data flows through the generic taxonomy pipeline like any other space
+- the only education-aware code remaining in back-sync will be the lessonSchedule producer (pending its own refactor into a generic event-job model — see §10.6)
+- space-specific knowledge (spaceId, period type assumptions, job names) lives in configuration or in the UI layer, not in sync code
+
+This removal is tied to the successful deployment of the generic group/source/capture pipeline. It should not happen before the pipeline is verified to be producing correct results for the education space.

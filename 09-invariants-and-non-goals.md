@@ -24,6 +24,12 @@
 - Flag filtering is part of the intended authorization cost model.
 - Non-taxonomy producers may write valid `groupMemberships` rows.
 
+### 11.5 Field Mutability And Constraint Drift
+Group fields (e.g. `periodTypeId`, `sources`, `_captureTypes`) are **not immutable** by default.
+When a constraint-bearing field changes on a group, dependents (linked groups, memberships, captures) that no longer satisfy the constraint are treated as **invalid links** — equivalent to a link to a deleted group — and should be handled reactively, not prevented at write time.
+
+If specific fields need to be locked in the future (e.g. an event requiring a linked group to permanently retain a given `captureTypeId`), the mechanism will be one or more **immutability flags** on `Group`, and the relevant write methods will be updated to enforce them. No field should be hardcoded as immutable in the schema; all immutability is opt-in via flags.
+
 ## 12. Non-Goals
 - This spec does not define a generic event-sourced history engine.
 - This spec does not require raw `TaxonomyMembership` documents to be ergonomic for application reads.
@@ -31,3 +37,4 @@
 - This spec does not solve interval-query performance purely through schema shape.
 - This spec does not require every hierarchy node to map to a reusable `Group`.
 - This spec does not assume the seeded education profile is the only supported profile.
+- This spec does not enforce field immutability at the schema level; immutability is a future opt-in via flags, not a current constraint.

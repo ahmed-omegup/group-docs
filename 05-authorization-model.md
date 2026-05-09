@@ -49,6 +49,18 @@ With flag-based filtering:
 
 This is why `makeGroupMembershipFlagsStream` denormalizes flags into `groupMemberships._flags`.
 
+### 7.4.1 The `searchable` Flag
+`searchable` is a flag that marks a group as eligible to contribute to the `User.memberIn` denormalized capture index.
+
+Semantic role:
+- only `searchable`-flagged groups appear in `User.memberIn`, keeping the index small and query-relevant
+- the tree-view UI and other member-search surfaces rely on this index to quickly resolve which groups a user belonged to at a given capture snapshot
+- the flag does not affect authorization checks; it only governs the `memberIn` denormalization pipeline
+
+Capture type filtering:
+- not all capture types are relevant for search surfaces; for example, the tree-view typically only needs `schoolYear_end` captures
+- `User.memberIn` is therefore keyed by `captureId` rather than by `groupId`, so consumers can select the right capture granularity for their surface
+
 ### 7.5 Time Semantics
 Current permission checks use overlap logic on `starts` / `ends`.
 

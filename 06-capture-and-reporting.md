@@ -86,3 +86,56 @@ This turns what would be a timeline range scan into a bounded indexed lookup.
 - `CaptureGroupMembership` is not a replacement for `MemberCaptureTaxonomy`
 - `MemberCaptureTaxonomy` preserves taxonomy hierarchy context (`groupPartId`) and is consumed by evaluation/report pipelines that need to know *where in the hierarchy* a member was classified
 - `CaptureGroupMembership` answers *who was in this group at this moment*, regardless of how they got there
+
+### 8.8 User.memberIn Denormalization
+
+`User.memberIn` is a denormalized capture-based group index written directly onto the user document.
+
+Shape:
+```
+memberIn: {
+  // key = captureId = `{captureTypeId}_{period}` = `{periodTypeId}_{captureSubId}_{period}`
+  [captureId: string]: { jobId: string; groupId: string }[]
+}
+```
+
+Key construction:
+- `captureTypeId = {periodTypeId}_{captureSubId}`
+- `captureId = {captureTypeId}_{period}` = `{periodTypeId}_{captureSubId}_{period}`
+- Which `{period}` and `{captureSubId}` to use for a given `periodTypeId` is defined in settings: `periods: { [periodTypeId]: { period, captureSubId } }`
+
+Production rule:
+- for each `CaptureGroupMembership` row where the group has the `searchable` flag, write an entry under the corresponding `captureId` key on the member's `User` document
+- only `searchable`-flagged groups contribute; this keeps the index small
+
+Query pattern:
+- `memberIn.{periodTypeId}_{captureSubId}_{period}: { jobId: someJob, groupId: { $in: selectedGroups } }`
+- use `$or` across multiple keys when more than one period/captureSubId is relevant
+- the group filter in UI should restrict selectable groups to those whose `_captureTypes[jobId]` contains the corresponding `captureTypeId` — groups without it are filtered out or greyed
+
+This denormalization is read-optimized and should not be treated as authoritative; `CaptureGroupMembership` remains the source of truth.
+
+### 8.9 User.classedIn Denormalization
+
+`User.classedIn` generalizes the education-specific `attendeeIn` into a taxonomy+capture-scoped classification index.
+
+Shape:
+```
+classedIn: {
+  // key = SpaceCaptureTaxonomy._id = `{spaceId}_{captureSubId}_{period}_{taxonomyId}`
+  // e.g. classedIn['education_endYear_2025_education_grade']
+  //       spaceId=education, captureSubId=endYear, period=2025, taxonomyId=education_grade
+  [spaceCaptureTaxonomyId: string]: { groupId: string; groupPartId: string; group: string; groupPart: string; path: string }
+}
+```
+
+Key construction:
+- the key is the `SpaceCaptureTaxonomy._id`, which is `{spaceCaptureId}_{taxonomyId}` and expands to `{spaceId}_{captureSubId}_{period}_{taxonomyId}`
+- this is the same information as the old `{taxonomyId}_{period}_{captureSubId}` key but reordered so it matches the existing SpaceCaptureTaxonomy document id directly — no key derivation needed
+
+Usage:
+- display the canonical class assignment of a student at end-of-year 2025: `classedIn['education_endYear_2025_education_grade']`
+- sort students in a term grid using `classedIn['education_term1_2025_education_grade']`
+- any space/taxonomy pair can contribute as long as a matching `SpaceCapture` + `CaptureSpaceType` exists
+
+Migration note: this replaces `attendeeIn` (which was hardcoded to the education space with key `{period}_grade{''|'_class'}`). `attendeeIn.2025_grade` corresponds to `classedIn.education_endYear_2025_education_grade`.

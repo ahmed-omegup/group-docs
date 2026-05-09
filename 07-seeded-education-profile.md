@@ -41,7 +41,20 @@ Current education membership producers:
 - student placement producer for taxonomy memberships
 - lesson schedule producer for teacher/supervisor read memberships
 
+Current lessonSchedule assumptions:
+- jobs are hardcoded to `supervisor` (teacher) and `attendee` (students)
+- all lesson schedules are assumed to use the `periodType_schoolYear` period type
+
+These are current constraints, not architectural requirements. See §10 for the target direction toward dynamic jobs.
+
 ### 9.6 Important Scope Note
 This education profile is not the conceptual limit of the model.
 
 It is a seeded implementation profile used to bootstrap the generic architecture in the current codebase.
+
+### 9.7 Migration Target
+The goal is for back-sync to contain no education-specific logic once the migration is complete:
+- the education *data* (groups, parts, memberships) will continue to flow through the generic taxonomy pipeline
+- the hardcoded education sync streams (grade/class group derivation, the education-specific seeder) should be removed
+- lessonSchedule will be refactored separately
+- knowledge of the education spaceId and `periodType_schoolYear` should live only in the UI layer after migration
