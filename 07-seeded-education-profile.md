@@ -30,6 +30,12 @@ Current flags on both group families:
 - `schedulable`
 - `homework-attached`
 
+Current education-owned jobs for these group families:
+- `attendee` for the main student cohort membership of the class/grade
+- `supervisor` for staff/teacher participation relative to the same reusable class/grade group
+
+These jobs belong to the education profile. Other modules may contribute memberships to those jobs, but they do not define the job vocabulary itself.
+
 ### 9.4 Group Parts
 Current derived group parts:
 - one grade part per grade in the grade taxonomy
@@ -42,10 +48,16 @@ Current education membership producers:
 - lesson schedule producer for teacher/supervisor read memberships
 
 Current lessonSchedule assumptions:
-- jobs are hardcoded to `supervisor` (teacher) and `attendee` (students)
+- the education profile owns the `attendee` and `supervisor` jobs used by class/grade groups
+- taxonomy membership contributes the `attendee` job
+- lessonSchedule currently contributes the `supervisor` job
 - all lesson schedules are assumed to use the `periodType_schoolYear` period type
 
-These are current constraints, not architectural requirements. See §10 for the target direction toward dynamic jobs.
+These are current constraints, not architectural requirements. See §10 for the target direction toward explicit job targeting and event role-to-job bindings.
+
+Current consumer targeting rule in the education profile:
+- homework and subject models should target an explicit `GroupJob`, not a bare `groupId`
+- lesson schedules are a separate case because they coordinate multiple jobs within one referenced group
 
 ### 9.6 Important Scope Note
 This education profile is not the conceptual limit of the model.

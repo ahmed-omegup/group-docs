@@ -11,6 +11,7 @@ The canonical identifiers are:
 - space capture: `{spaceId}_{subid}_{period}`
 - capture taxonomy: `{spaceCaptureId}_{taxonomyId}`
 - member capture taxonomy: `{memberId}_{spaceCaptureTaxonomyId}`
+- conceptual group-job reference: `{ groupId, jobId }` (pair only; no standalone allocated id in the current model)
 
 Group and group-part identifiers are intentionally different.
 
@@ -18,6 +19,7 @@ Rationale:
 - a `GroupPart` identifies one taxonomy-local placement and one `jobId`
 - a `Group` identifies the reusable target over which several jobs may coexist
 - therefore a reusable group cannot be identified by any single job-specific part id
+- when a consumer needs one explicit participant kind, it must persist the `groupId` / `jobId` pair rather than infer a job from the reusable group id
 
 ### 4.2 Dynamic Membership Keys
 Dynamic `TaxonomyMembership.history` keys are scoped by taxonomy context.
@@ -93,3 +95,13 @@ Parent synchronization:
 - sources must not write into another source's `_parentIds` field
 - `Group._parentIds[jobId]` is a computed view routing each job to `${sources[jobId].source}_parentIds[jobId]`
 - parent relations at the reusable-group layer remain job-specific and source-scoped
+
+### 5.6 Entity Targeting Rule
+When an entity is semantically about one participant kind within a reusable group, it must store an explicit `GroupJob` reference.
+
+Rules:
+- there is no implicit or default job derived from `groupId`
+- job-specific entities should store `{ groupId, jobId }` explicitly
+- current intended examples include homework, subject, and similar assignment-like models whose audience is one job only
+- entities that coordinate several jobs inside the same reusable group may store `groupId` once and keep explicit role-to-job bindings beside it
+- future recurrent events follow that second shape: one referenced group, multiple explicit job bindings inside that group

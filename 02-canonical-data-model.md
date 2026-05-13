@@ -34,6 +34,7 @@ Notes:
 - `Group` represents the reusable identity, not its placement in a taxonomy.
 - `Group.name` should be self-contained and distinguishable on its own, even outside any parent context.
 - One `Group` may aggregate memberships for multiple jobs.
+- A bare `groupId` does not imply any default job; job-sensitive consumers must carry `jobId` explicitly.
 - `sources[jobId]` acts as both a contribution gate and a source ownership lock:
   - the `source` field identifies which sync producer owns this `(groupId, jobId)` slot
   - once set to source A, no other source is permitted to register or write for that slot
@@ -54,6 +55,22 @@ Fields:
 - `subid`
 - `name`
 
+Meaning:
+- `JobInGroup` is reusable vocabulary for how a member participates in a reusable group.
+- Jobs are owned by the domain/profile that defines the group family. For education-managed class/grade groups, `attendee` is owned by the education profile, not by lesson schedules or future event producers.
+
+#### GroupJob
+Conceptual explicit reference to one participant slot inside a reusable group.
+
+Fields:
+- `groupId`
+- `jobId`
+
+Meaning:
+- `GroupJob` is not a standalone collection in the current model; it is the pair `{ groupId, jobId }` wherever a consumer needs to point at one specific kind of participant.
+- Models such as homework, subject assignment, and similar single-audience entities should target a `GroupJob` explicitly.
+- Models that coordinate several jobs within the same reusable group may store `groupId` once and keep explicit role-to-job bindings beside it.
+
 ### 3.2 Space / Period / Taxonomy Layer
 
 #### Space
@@ -68,7 +85,7 @@ Fields:
 
 Meaning:
 - A `Space` defines which `PeriodType` partitions membership state.
-- A `Space` also defines the default `jobId` used when taxonomy memberships are materialized into `groupMemberships`.
+- A `Space` also defines the `jobId` contributed by that taxonomy source when memberships are materialized into `groupMemberships`.
 
 #### PeriodType
 Technical partitioning model for a space.

@@ -11,7 +11,8 @@ The second path is what makes groups part of the authorization substrate.
 
 ### 7.2 Rule Shape
 Current group-based permission definitions in the codebase specify concepts like:
-- `field`: entity field containing the relevant group identifier
+- `field`: entity field containing the relevant group identifier, or the `groupId` component of an explicit group-job reference
+- `jobField`: optional entity field containing an explicit target `jobId` when the entity is job-specific
 - `flags`: required group capabilities for that entity family
 - `timeField`: entity time field used for overlap checks when relevant
 - `defaultAgainst`: fallback behavior when no match applies
@@ -21,11 +22,13 @@ These rules are implemented in the backend permission layer.
 ### 7.3 Runtime Membership Query
 At runtime, a group-based check resolves candidate `groupMemberships` for the acting user by filtering on:
 - `memberId`
-- `jobId` when required by the permission
+- `jobId` when required by the permission or carried explicitly by the entity
 - group flags through denormalized `_flags`
 - time overlap between membership interval and entity interval/date
 
 Then the matching entity query is constrained by the resulting eligible `groupId` set.
+
+If the entity stores an explicit `GroupJob` reference, there is no implicit attendee/default fallback: both `groupId` and `jobId` are part of the meaning of the link.
 
 This is one of the reasons `GroupPart` must stay separate from `Group`:
 - permissions are evaluated on the reusable `Group`

@@ -20,6 +20,7 @@ Core concepts:
 - `GroupCategory`: semantic category of a reusable group, such as grade or class.
 - `Group`: reusable business group that can be attached to permissions and other domain objects.
 - `JobInGroup`: the role a member has relative to a group, such as attendee or supervisor.
+- `GroupJob`: conceptual reference `{ groupId, jobId }` to one explicit job slot inside a reusable group; this is a pair, not a first-class collection.
 - `Space`: a grouping domain. A space owns taxonomies and defines how memberships are partitioned over periods.
 - `Taxonomy`: a hierarchical axis inside a space.
 - `GroupPart`: a node inside a taxonomy hierarchy. A part can either point to a concrete `Group` or be structural only.
@@ -28,6 +29,8 @@ Core concepts:
 The important separation is:
 - `Group` is the reusable business object used by authorization.
 - `GroupPart` is the taxonomy-local placement of a group within a specific hierarchy.
+- `Group` may host several jobs at once; no job is implicit or default.
+- consumers that target one participant kind should store an explicit `GroupJob`; consumers that coordinate several jobs inside the same reusable group may store `groupId` plus separate role-to-job bindings.
 
 ### 2.2 Write Perspective
 `TaxonomyMembership` is the authoritative source of taxonomy-derived membership.

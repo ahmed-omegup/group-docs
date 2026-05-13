@@ -91,6 +91,14 @@ Contribution constraint (current — to be migrated to `sources`):
 > - skip silently if `sources[jobId]` is absent or `sources[jobId].source !== 'lessonSchedule'`
 > - if the group has `periodTypeId` set and it does not match the lesson schedule's period type, skip the row silently
 
+This is a current implementation special case, not the target shape for all event-like sources.
+
+Target direction:
+- a recurrent-event producer will reference one reusable `groupId`
+- the event definition will bind one or more event roles to jobs inside that same group
+- the producer will materialize memberships for the configured target jobs without assuming any implicit/default participant job
+- `lessonSchedule` is the first concrete instance of this broader pattern
+
 This is the key architectural point:
 - `groupMemberships` is the unified authorization/capture read model, not just a taxonomy materialization.
 
