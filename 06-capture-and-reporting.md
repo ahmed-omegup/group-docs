@@ -124,7 +124,7 @@ Shape:
 classedIn: {
   // key = SpaceCaptureTaxonomy._id = `{spaceId}_{captureSubId}_{period}_{taxonomyId}`
   // e.g. classedIn['education_endYear_2025_education_grade']
-  //       spaceId=education, captureSubId=endYear, period=2025, taxonomyId=education_grade
+  //       spaceId=education, captureSubId=yearEnd, period=2025, taxonomyId=education_grade
   [spaceCaptureTaxonomyId: string]: { groupId: string; groupPartId: string; group: string; groupPart: string; path: string }
 }
 ```
