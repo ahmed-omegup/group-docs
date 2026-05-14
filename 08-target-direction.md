@@ -60,6 +60,9 @@ Current lessonSchedule membership uses two hardcoded jobs: `supervisor` and `att
 Target direction:
 - there should be no implicit/default job derived from a bare `groupId`
 - job-specific entities should point to an explicit `GroupJob` reference `{ groupId, jobId }`
+- parenthood should be modeled semantically as a relation between `GroupJob`s, not as a cross-job relation on the reusable `Group`
+- that parenthood must preserve `jobId`: a child group-job may only inherit from a parent group-job with the same job
+- this is because parenthood means substitution/refinement; cross-job links such as `attendee -> supervisor` are coordination bindings, not ancestry
 - recurrent-event-like entities are a different shape: they reference one reusable `groupId` and bind several event roles to jobs inside that same group
 - event roles such as `source` / `target` belong to the event type; jobs such as `attendee` / `supervisor` belong to the domain/profile of the referenced group
 - event producers should read role-to-job bindings from event configuration rather than hardcode `supervisor` or any other job in sync code
@@ -67,6 +70,7 @@ Target direction:
 - this generalizes the current pattern of syncing a teacher's lesson schedule presence into `groupMemberships`
 - lessonSchedule is the first concrete instance of this pattern; the architecture should eventually generalize it
 - the current `teacherSupervising` concept is expected to broaden into an event-target membership/read model rather than remain teacher/supervisor-specific
+- `Group` then remains useful as the container that ties several same-entity jobs together for multi-role features, while the actual hierarchy and substitutability semantics live on `GroupJob`
 
 This is a target refactor, not the current implementation.
 

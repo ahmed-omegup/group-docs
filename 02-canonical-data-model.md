@@ -70,6 +70,9 @@ Meaning:
 - `GroupJob` is not a standalone collection in the current model; it is the pair `{ groupId, jobId }` wherever a consumer needs to point at one specific kind of participant.
 - Models such as homework, subject assignment, and similar single-audience entities should target a `GroupJob` explicitly.
 - Models that coordinate several jobs within the same reusable group may store `groupId` once and keep explicit role-to-job bindings beside it.
+- The semantic parent/child relation for substitution and refinement is job-preserving: a child `GroupJob` may only inherit from a parent `GroupJob` with the same `jobId`.
+- Cross-job relations are not parenthood. They belong to multi-role coordination models such as recurrent-event role bindings.
+- In target direction, `Group` is primarily the container that binds several `GroupJob`s into one business entity when multi-role behavior is needed.
 
 ### 3.2 Space / Period / Taxonomy Layer
 
@@ -85,7 +88,9 @@ Fields:
 
 Meaning:
 - A `Space` defines which `PeriodType` partitions membership state.
-- A `Space` also defines the `jobId` contributed by that taxonomy source when memberships are materialized into `groupMemberships`.
+- A `Space` also declares the `jobId` that governs the entire taxonomy hierarchy it produces.
+- This declaration is required to enforce the same-job parent invariant at the source level: `GroupJob` parenthood must be job-preserving, so every source that contributes parent links must itself be restricted to a single job. Because `TaxonomyMembership` (the authoritative write model for taxonomy) carries no per-row `jobId`, `Space.jobId` is the one place where the job is declared, making the whole hierarchy job-homogeneous by construction.
+- Concretely: all parent/child links contributed by a taxonomy source carry the same `jobId` as the enclosing `Space`, and the sync pipeline can enforce this without inspecting individual rows.
 
 #### PeriodType
 Technical partitioning model for a space.
@@ -148,6 +153,7 @@ Meaning:
 - Because memberships for different jobs are contributed and interpreted differently, the system cannot identify the reusable group with any one job-specific taxonomy part.
 - `groupId` is optional because some nodes are structural only.
 - When `groupId` is set, the part points to the reusable `Group` represented at that node.
+- The inherited job context from `Space.jobId` is what lets taxonomy contribute a same-job hierarchy: if a part has ancestors, all of them are interpreted under the same job for ancestry and substitution semantics.
 
 #### PartAvailability
 Selectable availability window for a concrete part.

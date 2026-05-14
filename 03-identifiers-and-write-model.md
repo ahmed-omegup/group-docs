@@ -95,6 +95,10 @@ Parent synchronization:
 - sources must not write into another source's `_parentIds` field
 - `Group._parentIds[jobId]` is a computed view routing each job to `${sources[jobId].source}_parentIds[jobId]`
 - parent relations at the reusable-group layer remain job-specific and source-scoped
+- parent synchronization is job-preserving: a source may only emit parent links for the same `jobId` as the child slot it is writing
+- these parent links represent substitution/refinement semantics, so cross-job coordination must not be encoded as parenthood
+- taxonomy is therefore required to define one explicit job for the whole parent/child chain it contributes
+- target direction: this relation may later be represented explicitly between `GroupJob`s rather than stored indirectly on `Group` under job-keyed fields
 
 ### 5.6 Entity Targeting Rule
 When an entity is semantically about one participant kind within a reusable group, it must store an explicit `GroupJob` reference.
@@ -105,3 +109,4 @@ Rules:
 - current intended examples include homework, subject, and similar assignment-like models whose audience is one job only
 - entities that coordinate several jobs inside the same reusable group may store `groupId` once and keep explicit role-to-job bindings beside it
 - future recurrent events follow that second shape: one referenced group, multiple explicit job bindings inside that group
+- ancestry/substitution queries should be interpreted at the `GroupJob` level, not as cross-job relations inside the reusable `Group`
