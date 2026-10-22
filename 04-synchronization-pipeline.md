@@ -75,8 +75,7 @@ Contribution constraint (current — to be migrated to `sources`):
 > - look up `Group.sources[jobId]`; if absent, skip the row silently
 > - skip silently if `sources[jobId].source !== 'taxonomy'` (another source owns this slot)
 > - skip silently if `sources[jobId].partId !== groupPart._id`
-> - if the group has `periodTypeId` set and it does not match the contributing space's `periodTypeId`, skip the row silently
-> - on acceptance, write parent ids into `Group.taxonomy_parentIds[jobId]`
+> - on acceptance, write `periodTypeId` from the space and parent ids into `Group.taxonomy_parentIds[jobId]`
 >
 > All skips are silent — no error is thrown, other rows in the same pipeline run are unaffected.
 
@@ -89,7 +88,7 @@ Contribution constraint (current — to be migrated to `sources`):
 
 > **TODO - NOW:** `lessonSchedule` source must also apply strict contribution checks:
 > - skip silently if `sources[jobId]` is absent or `sources[jobId].source !== 'lessonSchedule'`
-> - if the group has `periodTypeId` set and it does not match the lesson schedule's period type, skip the row silently
+> - on acceptance, write `periodTypeId` from the lesson schedule. Capture ids for that row come from `captureTypesSrc.supervisor[periodTypeId]`
 
 This is a current implementation special case, not the target shape for all event-like sources.
 

@@ -84,7 +84,8 @@ Contribution is **strict**: a pipeline may only insert a row if all of the follo
 - `Group.sources[jobId]` is set
 - `sources[jobId].source` matches the contributing pipeline's source identifier
 - for `taxonomy` source: `sources[jobId].partId` matches the contributing `GroupPart._id`
-- if the group has `periodTypeId` set: the contributing source must produce rows for the same `periodTypeId`; if there is a mismatch, the pipeline **silently skips the row** — it does not throw an error or block other rows
+
+A mismatch of calendars does not skip the row. The membership is inserted with `period` and `periodTypeId` taken from the source (the space for taxonomy, the lesson schedule for supervisors). `_captures` is filled only when `captureTypesSrc[jobId][periodTypeId]` has ids; otherwise the membership stays and `_captures` is null.
 
 If any condition fails, the row is not inserted. There is no permissive fallback.
 

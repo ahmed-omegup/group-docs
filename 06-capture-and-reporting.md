@@ -67,10 +67,16 @@ If future-dated moves are introduced later, capture semantics will need an expli
 `CaptureGroupMembership` is the unified group membership snapshot for a given `Capture`, across all sources.
 
 **How `GroupMembership._captures` is populated:**
-- For each `captureTypeId` in `group._captureTypes[membership.jobId]`, construct id `{captureTypeId}_{membership.period}`
+- Take `captureTypesSrc[membership.jobId][membership.periodTypeId]`, a list of full capture type ids
+- For each id, construct `{captureTypeId}_{membership.period}`
 - Pure id construction — no join to `Capture` collection required
 - The resulting ids are stored in `GroupMembership._captures`
+- A missing slice leaves the membership in place and `_captures` null
 - Some ids may reference non-existent `Capture` documents; those produce no downstream row and are otherwise harmless
+
+`_captureTypes[jobId]` is the union of those slices for the period types the job's source currently contributes. The group picker queries that field. A declared slice whose calendar is not in use stays only in `captureTypesSrc`.
+
+Jobs share one `CaptureGroupMembership` row only when they produce the same capture id.
 
 **Resolution pipeline:**
 - For a given `captureId`: find all `groupMemberships` where `_captures ∋ captureId` (indexed equality)
@@ -80,7 +86,8 @@ If future-dated moves are introduced later, capture semantics will need an expli
 This turns what would be a timeline range scan into a bounded indexed lookup.
 
 **Period consistency:**
-- Because contributing pipelines only write a `period` field (and therefore a valid `_captures` entry) when `Group.periodTypeId` matches the source's period type (§5.5), there are no cross-period mismatches to defend against at read time.
+- `GroupMembership.period` is a bare number. `periodTypeId` on the same row names the calendar that produced it.
+- `_captures` uses only the slice for that calendar, so a supervisor on one calendar is not indexed into another calendar's capture.
 
 **Relationship to taxonomy capture:**
 - `CaptureGroupMembership` is not a replacement for `MemberCaptureTaxonomy`

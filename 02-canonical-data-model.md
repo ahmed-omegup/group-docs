@@ -22,8 +22,8 @@ Fields:
 - `name`
 - `categoryId`
 - `flags: Flag[]`
-- `periodTypeId?` — when set, the group participates in group capture; contributing source pipelines must match this `periodTypeId` or silently skip insertion
-- `_captureTypes?: { [jobId: string]: captureTypeId[] }` — computed; for each job, the list of `CaptureType` ids whose snapshots this group participates in. Population logic deferred (**LATER**). **[TODO - LATER]**
+- `captureTypesSrc: { [jobId: string]: { [periodTypeId: string]: captureTypeId[] } } | null` — edited. For each job, the capture types that job should receive, grouped by calendar. Values are full capture type ids (`{periodTypeId}_{captureSubId}`).
+- `_captureTypes?: { [jobId: string]: captureTypeId[] } | null` — computed from the group memberships just written. For each job, copy `captureTypesSrc[jobId][membership.periodTypeId]`. A slice whose calendar has no membership stays only in `captureTypesSrc`.
 - `starts?` — lifecycle start of the reusable group. **[DONE]**
 - `ends?` — lifecycle end of the reusable group. **[DONE]**
 - `sources?: { [jobId: string]: { source: string } & SourceData[source] }` — per-job source ownership lock and source-specific payload. **[TODO - NOW]**

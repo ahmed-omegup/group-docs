@@ -25,7 +25,7 @@
 - Non-taxonomy producers may write valid `groupMemberships` rows.
 
 ### 11.5 Field Mutability And Constraint Drift
-Group fields (e.g. `periodTypeId`, `sources`, `_captureTypes`) are **not immutable** by default.
+Group fields (e.g. `captureTypesSrc`, `sources`, `_captureTypes`) are **not immutable** by default.
 When a constraint-bearing field changes on a group, dependents (linked groups, memberships, captures) that no longer satisfy the constraint are treated as **invalid links** — equivalent to a link to a deleted group — and should be handled reactively, not prevented at write time.
 
 If specific fields need to be locked in the future (e.g. an event requiring a linked group to permanently retain a given `captureTypeId`), the mechanism will be one or more **immutability flags** on `Group`, and the relevant write methods will be updated to enforce them. No field should be hardcoded as immutable in the schema; all immutability is opt-in via flags.
