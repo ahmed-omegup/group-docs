@@ -68,27 +68,21 @@ The result is one resolved interval per effective taxonomy-derived concrete grou
 - `taxonomyPeriod = {taxonomyId}_{period}`
 - `memberTaxonomyId = {memberId}_{taxonomyId}_{period}`
 
-Contribution constraint (current — to be migrated to `sources`):
-- a taxonomy-derived row for `(groupId, jobId)` is only valid when the contributing `GroupPart._id` matches the one registered in `Group.sources[jobId].partId`
+`makeCategoryJobsStream` copies `GroupCategory.jobs` onto each group and refreshes `_jobs`, `_sources`, and `_captureTypes`. It is the only writer of those three fields. `_captureTypes` is the recipe flattened to capture type ids: which captures the job is eligible to fill. It does not depend on membership rows.
 
-> **TODO - NOW:** Migrate contribution constraint to use `sources`:
-> - look up `Group.sources[jobId]`; if absent, skip the row silently
-> - skip silently if `sources[jobId].source !== 'taxonomy'` (another source owns this slot)
-> - skip silently if `sources[jobId].partId !== groupPart._id`
-> - on acceptance, write `periodTypeId` from the space and parent ids into `Group.taxonomy_parentIds[jobId]`
->
-> All skips are silent — no error is thrown, other rows in the same pipeline run are unaffected.
+Contribution constraint (`taxonomySlotOwnsPart`, one predicate):
+- a taxonomy interval is kept only when `jobs[jobId].source === 'taxonomy'` and `meta[jobId].taxonomy.groupPartId` equals the contributing `GroupPart._id`
+- the same predicate nulls the joined group on the part denorm, so a part cannot show a group the membership pipeline dropped
+- otherwise the interval is skipped silently
 
 `makeTeacherScheduleMembershipStream` writes schedule-derived rows into the same collection with:
 - `source = 'lessonSchedule'`
-- `jobId = 'supervisor'`
+- one row per job where `jobs[jobId].source === 'lessonSchedule'` (no hardcoded job name)
 - `groupId = lessonSchedule.classId`
 - `starts = lessonSchedule.startDate`
 - `ends = lessonSchedule.endDate`
-
-> **TODO - NOW:** `lessonSchedule` source must also apply strict contribution checks:
-> - skip silently if `sources[jobId]` is absent or `sources[jobId].source !== 'lessonSchedule'`
-> - on acceptance, write `periodTypeId` from the lesson schedule. Capture ids for that row come from `captureTypesSrc.supervisor[periodTypeId]`
+- skip the schedule silently when the group has no such job
+- `periodTypeId` comes from the lesson schedule. Capture ids for that row come from `jobs[jobId].captures[periodTypeId]`
 
 This is a current implementation special case, not the target shape for all event-like sources.
 

@@ -67,14 +67,18 @@ If future-dated moves are introduced later, capture semantics will need an expli
 `CaptureGroupMembership` is the unified group membership snapshot for a given `Capture`, across all sources.
 
 **How `GroupMembership._captures` is populated:**
-- Take `captureTypesSrc[membership.jobId][membership.periodTypeId]`, a list of full capture type ids
-- For each id, construct `{captureTypeId}_{membership.period}`
+- Take `jobs[membership.jobId].captures[membership.periodTypeId]`, a list of capture subids
+- For each subid, construct `{periodTypeId}_{captureSubId}_{membership.period}`
 - Pure id construction — no join to `Capture` collection required
 - The resulting ids are stored in `GroupMembership._captures`
 - A missing slice leaves the membership in place and `_captures` null
 - Some ids may reference non-existent `Capture` documents; those produce no downstream row and are otherwise harmless
 
-`_captureTypes[jobId]` is the union of those slices for the period types the job's source currently contributes. The group picker queries that field. A declared slice whose calendar is not in use stays only in `captureTypesSrc`.
+`_captureTypes[jobId]` is picker eligibility, not evidence that someone is already a member.
+
+It is `jobs[jobId].captures` flattened to `{periodTypeId}_{captureSubId}`: every capture that job's recipe can fill. The group picker (and the copy of this field on `GroupPart`) queries `_captureTypes.${jobId}`. A group shows up when the recipe includes the capture the user is viewing, even if that group has zero memberships.
+
+An empty member list for a selected group then means the group is eligible for this capture and currently has no member. That is real information. Hiding the group until a membership exists would make that case unreachable. The misleading case is the opposite: offering a group whose recipe does not include the capture. Its member list is empty because the group cannot contribute, which reads as "nobody is in this group at this time".
 
 Jobs share one `CaptureGroupMembership` row only when they produce the same capture id.
 
@@ -118,7 +122,7 @@ Production rule:
 Query pattern:
 - `memberIn.{periodTypeId}_{captureSubId}_{period}: { jobId: someJob, groupId: { $in: selectedGroups } }`
 - use `$or` across multiple keys when more than one period/captureSubId is relevant
-- the group filter in UI should restrict selectable groups to those whose `_captureTypes[jobId]` contains the corresponding `captureTypeId` — groups without it are filtered out or greyed
+- the group filter restricts selectable groups to those eligible for the capture (`_captureTypes[jobId]` contains that `captureTypeId`). Do not require an existing membership; a selected group with no members is a valid empty result
 
 This denormalization is read-optimized and should not be treated as authoritative; `CaptureGroupMembership` remains the source of truth.
 

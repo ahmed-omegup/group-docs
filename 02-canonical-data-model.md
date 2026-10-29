@@ -12,6 +12,7 @@ Fields:
 - `subid`
 - `name`
 - `flags: Flag[]`
+- `jobs: { [jobId: string]: { source: SourceId, captures: { [periodTypeId: string]: captureSubId[] } | null } }` — recipe copied onto every group of this category. `captures` values are subids (`yearEnd`), not full capture type ids.
 
 #### Group
 Reusable business group referenced by permissions and projections.
@@ -22,11 +23,11 @@ Fields:
 - `name`
 - `categoryId`
 - `flags: Flag[]`
-- `captureTypesSrc: { [jobId: string]: { [periodTypeId: string]: captureTypeId[] } } | null` — edited. For each job, the capture types that job should receive, grouped by calendar. Values are full capture type ids (`{periodTypeId}_{captureSubId}`).
-- `_captureTypes?: { [jobId: string]: captureTypeId[] } | null` — computed from the group memberships just written. For each job, copy `captureTypesSrc[jobId][membership.periodTypeId]`. A slice whose calendar has no membership stays only in `captureTypesSrc`.
+- `jobs?: { [jobId: string]: { source: SourceId, captures: { [periodTypeId: string]: captureSubId[] } | null } } | null` — synced from `GroupCategory.jobs`. Not edited on the group.
+- `meta?: { [jobId: string]: { [sourceId]?: SourceMeta } }` — instance payload for the active source. Taxonomy payload is `{ groupPartId }`. Edited by the producer that places the group, not by the membership pipeline.
+- `_captureTypes?: { [jobId: string]: captureTypeId[] } | null` — picker eligibility. Flatten `jobs[jobId].captures` to `{periodTypeId}_{captureSubId}` for every slice in the recipe, including when the group has no membership. This is not "captures that already have members". A job with no slices stores null for that key; a group with none stores null.
 - `starts?` — lifecycle start of the reusable group. **[DONE]**
 - `ends?` — lifecycle end of the reusable group. **[DONE]**
-- `sources?: { [jobId: string]: { source: string } & SourceData[source] }` — per-job source ownership lock and source-specific payload. **[TODO - NOW]**
 - `${source}_parentIds?: { [jobId: string]: string[] }` — per-source synced parent id sets, e.g. `taxonomy_parentIds`. Written only by the sync pipeline that owns that source. **[TODO - NOW]**
 - `_parentIds?: { [jobId: string]: string[] }` — computed view: routes each job to its owning source's `parentIds` bucket. **[TODO - NOW]**
 
@@ -35,13 +36,13 @@ Notes:
 - `Group.name` should be self-contained and distinguishable on its own, even outside any parent context.
 - One `Group` may aggregate memberships for multiple jobs.
 - A bare `groupId` does not imply any default job; job-sensitive consumers must carry `jobId` explicitly.
-- `sources[jobId]` acts as both a contribution gate and a source ownership lock:
-  - the `source` field identifies which sync producer owns this `(groupId, jobId)` slot
-  - once set to source A, no other source is permitted to register or write for that slot
-  - the remaining fields carry source-specific payload (e.g. `partId: GroupPart._id` for `taxonomy` source)
-  - if `sources[jobId]` is absent, the slot is unclaimed and **no contribution is allowed** — the pipeline silently skips the row
+- `jobs[jobId].source` is the contribution gate and ownership lock. `meta[jobId][source]` is the payload. Together they are the fused lock (`GroupJob.from`):
+  - `source` identifies which sync producer owns this `(groupId, jobId)` slot
+  - once the category sets source A, no other source may write that slot
+  - taxonomy payload is `meta[jobId].taxonomy.groupPartId`
+  - if `jobs[jobId]` is absent, the slot is unclaimed and **no contribution is allowed** — the pipeline silently skips the row
 - `${source}_parentIds[jobId]` is written exclusively by the sync pipeline that owns that source; pipelines must not touch other sources' fields
-- `_parentIds[jobId]` is a computed view: `sources[jobId].source + '_parentIds'[jobId]`
+- `_parentIds[jobId]` is a computed view: `jobs[jobId].source + '_parentIds'[jobId]`
 - `starts` / `ends` express the lifecycle of the reusable group itself.
 - Timing on `Group` is distinct from timing on `PartAvailability`, which describes when a taxonomy placement is valid.
 
@@ -220,7 +221,7 @@ Fields:
 - `taxonomyPeriod?`
 - `memberTaxonomyId?`
 - `_flags?`
-- `_captures?` — computed by ID construction: for each `captureTypeId` in `group._captureTypes[jobId]`, append `{captureTypeId}_{period}`. No join is required; some constructed ids may reference non-existent `Capture` documents, which simply produce no downstream row. **[TODO - NOW]**
+- `_captures?` — computed by ID construction: for each `captureSubId` in `group.jobs[jobId].captures[periodTypeId]`, append `{periodTypeId}_{captureSubId}_{period}`. No join is required; some constructed ids may reference non-existent `Capture` documents, which simply produce no downstream row.
 
 Meaning:
 - This collection materializes effective group membership intervals regardless of producer.

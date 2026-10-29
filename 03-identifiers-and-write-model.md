@@ -76,16 +76,16 @@ The canonical model is pessimistic:
 
 ### 5.5 Group / Job Contribution Constraints
 
-> **TODO - NOW:** Implement `Group.sources` and per-source `_parentIds` fields.
+Contribution to `groupMemberships` for a given `(groupId, jobId)` is governed by `Group.jobs` and `Group.meta`.
 
-Contribution to `groupMemberships` for a given `(groupId, jobId)` is governed by `Group.sources`.
+`Group.jobs` is copied from `GroupCategory.jobs`. `Group.meta` holds instance payload (`groupPartId` for taxonomy).
 
 Contribution is **strict**: a pipeline may only insert a row if all of the following hold:
-- `Group.sources[jobId]` is set
-- `sources[jobId].source` matches the contributing pipeline's source identifier
-- for `taxonomy` source: `sources[jobId].partId` matches the contributing `GroupPart._id`
+- `Group.jobs[jobId]` is set
+- `jobs[jobId].source` matches the contributing pipeline's source identifier
+- for `taxonomy` source: `meta[jobId].taxonomy.groupPartId` matches the contributing `GroupPart._id`
 
-A mismatch of calendars does not skip the row. The membership is inserted with `period` and `periodTypeId` taken from the source (the space for taxonomy, the lesson schedule for supervisors). `_captures` is filled only when `captureTypesSrc[jobId][periodTypeId]` has ids; otherwise the membership stays and `_captures` is null.
+A mismatch of calendars does not skip the row. The membership is inserted with `period` and `periodTypeId` taken from the source (the space for taxonomy, the lesson schedule for a `lessonSchedule` job). `_captures` is filled only when `jobs[jobId].captures[periodTypeId]` has subids; otherwise the membership stays and `_captures` is null.
 
 If any condition fails, the row is not inserted. There is no permissive fallback.
 
@@ -94,7 +94,7 @@ This design ensures that misconfigured scopes do not propagate bad data and do n
 Parent synchronization:
 - each source writes its parent ids into its own `${source}_parentIds[jobId]` field on `Group`
 - sources must not write into another source's `_parentIds` field
-- `Group._parentIds[jobId]` is a computed view routing each job to `${sources[jobId].source}_parentIds[jobId]`
+- `Group._parentIds[jobId]` is a computed view routing each job to `${jobs[jobId].source}_parentIds[jobId]`
 - parent relations at the reusable-group layer remain job-specific and source-scoped
 - parent synchronization is job-preserving: a source may only emit parent links for the same `jobId` as the child slot it is writing
 - these parent links represent substitution/refinement semantics, so cross-job coordination must not be encoded as parenthood

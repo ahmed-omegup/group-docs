@@ -22,9 +22,12 @@ Current derived reusable groups:
 - one `Group` per grade
 - one `Group` per class
 
-Current categories:
-- grade category
-- class category
+Current categories and their job recipes:
+- `grade_cat`: `attendee` → `taxonomy`, school-year `yearEnd` capture
+- `class_cat`: `attendee` → `taxonomy`, `supervisor` → `lessonSchedule`, both with school-year `yearEnd` capture
+- `custom_cat`, `activity_cat`, `story_cat`: custom sources, no captures
+
+The taxonomy `groupPartId` is instance data on `Group.meta`, not part of the category recipe.
 
 Current flags on both group families:
 - `schedulable`
@@ -50,7 +53,7 @@ Current education membership producers:
 Current lessonSchedule assumptions:
 - the education profile owns the `attendee` and `supervisor` jobs used by class/grade groups
 - taxonomy membership contributes the `attendee` job
-- lessonSchedule currently contributes the `supervisor` job
+- lessonSchedule contributes every job whose category recipe source is `lessonSchedule` (the class recipe uses `supervisor`)
 - all lesson schedules are assumed to use the `periodType_schoolYear` period type
 
 These are current constraints, not architectural requirements. See §10 for the target direction toward explicit job targeting and event role-to-job bindings.
